@@ -12,10 +12,6 @@ typedef unsigned char  uint8_t;
 int main(void)
 {
     APB2ENR |= (1 << 4);                   // Enable GPIOC clock.
-                                    // corrimiento para poner IOPBEN en 1
-    // Valor de memoria de los registros
-    // RCC: 0x4002
-    // APB2ENR: 0x18
 
     CRL  = 0x33333333;            // Make low GPIOC output
     CRH  = 0x33333333;            // Make high GPIOC output
@@ -26,7 +22,7 @@ int main(void)
     {
         volatile int i; // volatile para compilar en lenguaje maquina
         for(i=0; i <100000 ; i++); // titila cada 100000 iteraciones
-            ODR ^= -1;
+            ODR ^= -1; // invierte el valor de los bits
     }
 
     return 0;
