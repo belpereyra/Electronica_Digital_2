@@ -12,41 +12,33 @@ typedef unsigned char  uint8_t;
 #define GPIOC_CRH *(volatile int*)0x40011004
 #define GPIOC_ODR *(volatile int*)0x4001100C // ODR: Guarda el estado de salida
 
-// Puerto B
-// Registros de control del reloj (RCC)
-// El registro APB2ENR está en la dirección base del RCC más un offset de 0x18
-#define GPIOB_CRL *(volatile int*)0x40010C00
-#define GPIOB_CRH *(volatile int*)0x40010C04
-#define GPIOB_ODR *(volatile int*)0x40010C0C 
-#define GPIOB_IDR *(volatile int*)0x40010C08 // se utiliza para detectar el estado, lee el estado de la entrada 1(prendido) y 0 (apagado)
 
 int main(void)
 {
 
 	APB2ENR |= (1 << 4);  // Enable clock GIOPC
-	APB2ENR |= (1 << 3); // Enable clock GIOPB
 
 	GPIOC_CRL  = 0x33333333;            // Make low GPIOC output
 	GPIOC_CRH  = 0x33333333;            // Make high GPIOC output
-	
-	GPIOB_CRL  = 0x33333333;            // Make low GPIOC output
-	GPIOB_CRH  = 0x33333333;            // Make high GPIOC output	
-
 
 	for(;;)
 	{
-		if(GPIOB_ODR & (1 << 12) && GPIOB_ODR & (1 << 13))
-		{
-			// Si el pin está en ALTO (conectado a 3.3V), encendemos el LED (pin PC13 a 0).
-            GPIOC_ODR &= ~(1 << 13);
-			GPIOB_ODR &= ~(1 << 12);
-		}
-		else
-		{
-			// Si el pin está en BAJO (conectado a GND o flotando), apagamos el LED (pin PC13 a 1).
-			GPIOC_ODR |= (1 << 13);
-			GPIOB_ODR |= (1 << 12);
-		}
+		volatile int i;
+		
+		// Encender ambos LEDs
+        GPIOC_ODR &= ~(1 << 13);
+        GPIOC_ODR &= ~ (1 << 14);
+
+        // retardo
+		for(i=0;i<500000;i++);
+
+		// Apagar ambos LEDs
+        GPIOC_ODR |= (1 << 13);
+        GPIOC_ODR |= (1 << 14);
+
+        //retardo
+		for(i=0;i<500000;i++);
+
 	}
 
 	return 0;
