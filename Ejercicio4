@@ -5,6 +5,8 @@ typedef unsigned int   uint32_t;
 typedef unsigned short uint16_t;
 typedef unsigned char  uint8_t;
 
+// Registros de control del reloj (RCC)
+// El registro APB2ENR está en la dirección base del RCC más un offset de 0x18
 #define APB2ENR *(volatile int*)0x40021018
 
 // Puerto C
@@ -13,41 +15,34 @@ typedef unsigned char  uint8_t;
 #define GPIOC_ODR *(volatile int*)0x4001100C // ODR: Guarda el estado de salida
 
 // Puerto B
-// Registros de control del reloj (RCC)
-// El registro APB2ENR está en la dirección base del RCC más un offset de 0x18
 #define GPIOB_CRL *(volatile int*)0x40010C00
 #define GPIOB_CRH *(volatile int*)0x40010C04
-#define GPIOB_ODR *(volatile int*)0x40010C0C
-#define GPIOB_IDR *(volatile int*)0x40010C08 // se utiliza para detectar el estado, lee el estado de la entrada 1(prendido) y 0 (apagado)
+#define GPIOB_ODR *(volatile int*)0x40010C0C // lee y escribe en pines de salida
+#define GPIOB_IDR *(volatile int*)0x40010C08 // lee y escribe en pines de entrada
 
 int main(void)
 {
 
-	APB2ENR |= (1 << 4);                   // Enable GPIOC clock.
-									// corrimiento para poner IOPBEN en 1
-	// Valor de memoria de los registros
-	// RCC: 0x4002
-	// APB2ENR: 0x18
-	APB2ENR |= (1 << 3); // Enable IOPBEN
+	APB2ENR |= (1 << 4);                   // Enable GPIOC clock para controlar el LED (pin C13)
+
+	APB2ENR |= (1 << 3); // Enable GPIOB clock para leer el estado del pin B12
 
 	GPIOC_CRL  = 0x33333333;            // Make low GPIOC output
 	GPIOC_CRH  = 0x33333333;            // Make high GPIOC output
 	
-	GPIOB_CRL  = 0x44444444;            // Make low GPIOC output
-	GPIOB_CRH  = 0x44444444;            // Make high GPIOC output		
+	GPIOB_CRL  = 0x44444444;            // Make low GPIOC input
+	GPIOB_CRH  = 0x44444444;            // Make high GPIOC input		
 	
 
 	for(;;)
 	{
-		if(GPIOB_IDR & (1 << 12))
+		if(GPIOB_IDR & (1 << 12)) // Si entrada B12 en 1
 		{
-			// Si el pin está en ALTO (conectado a 3.3V), encendemos el LED (pin PC13 a 0).
-            GPIOC_ODR &= ~(1 << 13);
+            GPIOC_ODR &= ~(1 << 13); // se enciende el LED (PC13 a 0)
 		}
-		else
+		else // Si B12 en 0 
 		{
-			// Si el pin está en BAJO (conectado a GND o flotando), apagamos el LED (pin PC13 a 1).
-			GPIOC_ODR |= (1 << 13);
+			GPIOC_ODR |= (1 << 13); // PC13 a 0, se apaga
 		}
 	}
 
