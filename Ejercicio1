@@ -1,0 +1,39 @@
+// 1. Implementar un código C de bajo nivel (sin utilizar las funciones de biblioteca) para encender el led disponible en la placa. 
+typedef int            int32_t;
+typedef short          int16_t;
+typedef char           int8_t;
+typedef unsigned int   uint32_t;
+typedef unsigned short uint16_t;
+typedef unsigned char  uint8_t;
+
+#define APB2ENR *(volatile int*)0x40021018
+#define CRL *(volatile int*)0x40011000
+#define CRH *(volatile int*)0x40011004
+#define ODR *(volatile int*)0x4001100C
+
+int main(void)
+{
+    APB2ENR |= (1 << 4);                   // Enable GPIOC clock.
+                                    // corrimiento para poner IOPBEN en 1
+    // Valor de memoria de los registros
+    // RCC: 0x4002
+    // APB2ENR: 0x18
+
+    CRL  = 0x33333333;            // Make low GPIOC output
+    CRH  = 0x33333333;            // Make high GPIOC output
+    ODR ^= -1; // lo manda a 1, es decir, se apaga
+    ODR ^= -1; // lo mando a 0 y ahi se prende
+
+    for(;;)
+    return 0;
+}
+
+#define SRAM_SIZE ((uint32_t) 0x00005000)
+#define SRAM_BASE ((uint32_t) 0x20000000)
+#define STACKINIT ((interrupt_t)(SRAM_BASE+SRAM_SIZE))
+
+typedef void(*interrupt_t)(void);
+const interrupt_t vector_table[256] __attribute__ ((section(".vtab"))) = {
+    STACKINIT,                                              // 0x0000_0000 Stack Pointer
+    (interrupt_t) main,                                     // 0x0000_0004 Reset
+};
