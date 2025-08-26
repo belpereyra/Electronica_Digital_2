@@ -1,0 +1,33 @@
+typedef int            int32_t;
+typedef short          int16_t;
+typedef char           int8_t;
+typedef unsigned int   uint32_t;
+typedef unsigned short uint16_t;
+typedef unsigned char  uint8_t;
+
+#define APB2ENR *(volatile int*)0x40021018
+#define CRL *(volatile int*)0x40011000
+#define CRH *(volatile int*)0x40011004
+#define ODR *(volatile int*)0x4001100C
+int main(void)
+{
+    APB2ENR |= (1 << 4);                   // Enable GPIOC clock.
+                                    // corrimiento para poner IOPBEN en 1
+    // Valor de memoria de los registros
+    // RCC: 0x4002
+    // APB2ENR: 0x18
+
+    CRL  = 0x33333333;            // Make low GPIOC output
+    CRH  = 0x33333333;            // Make high GPIOC output
+    ODR ^= -1; // lo manda a 1, es decir, se apaga
+    ODR ^= -1; // lo mando a 0 y ahi se prende
+
+    for(;;)
+    {
+        volatile int i; // volatile para compilar en lenguaje maquina
+        for(i=0; i <100000 ; i++); // titila cada 100000 iteraciones
+            ODR ^= -1;
+    }
+
+    return 0;
+}
