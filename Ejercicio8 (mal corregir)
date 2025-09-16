@@ -9,55 +9,62 @@ typedef unsigned char  uint8_t;
 // El registro APB2ENR está en la dirección base del RCC más un offset de 0x18
 #define APB2ENR *(volatile int*)0x40021018
 
+// NIVC: Controlador de interrupciones
+#define NVIC_ISER0   (*(volatile uint32_t*)0xE000E100)  // NVIC Interrupt Set Enable Register
+#define AFIO_EXTICR1 (*(volatile uint32_t*)0x40010008)  // AFIO EXTI configuration register 1
+#define EXTI_IMR     (*(volatile uint32_t*)0x40010400)  // EXTI Interrupt Mask Register
+#define EXTI_RTSR    (*(volatile uint32_t*)0x40010408)  // EXTI Rising Trigger Selection Register
+#define EXTI_PR      (*(volatile uint32_t*)0x40010414)  // EXTI Pending Register
+
 // Puerto B
 #define GPIOB_CRL *(volatile int*)0x40010C00
 #define GPIOB_CRH *(volatile int*)0x40010C04
 #define GPIOB_ODR *(volatile int*)0x40010C0C // lee y escribe en pines de salida
 #define GPIOB_IDR *(volatile int*)0x40010C08 // lee y escribe en pines de entrada
 
-// Registros del SysTick.
-#define SYSTICK_CSR  *(volatile int*)0xE000E010 // habilitar, deshabilitar y verificar el estado del temporizador
-#define SYSTICK_RVR  *(volatile int*)0xE000E014 // almacena el valor desde el cual el temporizador SysTick comenzará a contar hacia abajo.
-#define SYSTICK_CVR  *(volatile int*)0xE000E018 // almacena el valor actual del contador.
-#define SYSTICK_CALIB  *(volatile int*)0xE000E01C // Registro de Valor Actual.
-#define SYST_CSR_ENABLE    (1u<<0) //enable en 1
-#define SYST_CSR_CLKSOURCE (1u<<2) // clk en 1
-#define SYST_CSR_COUNTFLAG (1u<<16) // countflag en 1
+// Puerto A
+#define GPIOA_CRL  (*(volatile uint32_t*)0x40010800)
+#define GPIOA_CRH  (*(volatile uint32_t*)0x40010804)
+#define GPIOA_ODR  (*(volatile uint32_t*)0x4001080C)
+#define GPIOA_IDR  (*(volatile uint32_t*)0x40010808)
 
 // Definición del pin del LED
 #define LED_PIN 13
-
+#define BUTTON_PIN 0 
 
 int main(void)
 {
+	/* Habilitar relojes: IOPA (bit2), IOPB (bit3), AFIO (bit0) */
+    APB2ENR |= (1<<2) | (1<<3) | (1<<0);
 
-	APB2ENR |= (1 << 3); // Enable GPIOB clock 
-
+	/* Output Pull down*/
 	GPIOB_CRL  = 0x33333333;            // Make low GPIOB output
 	GPIOB_CRH  = 0x33333333;            // Make high GPIOB output		
+	GPIOB_ODR &= ~(1u << LED_PIN);		// Arranca apagado
 
-	// Arranca apagado
-	GPIOB_ODR |= (1u << LED_PIN);
-    
-    // Configurar el SysTick para un retardo de 0.5 segundos.
-    SYSTICK_RVR = 35999999; // (72MHz / 2) - 1
-    SYSTICK_CVR = 0; // Reiniciar el contador actual
-    
-    // Habilitar el SysTick y configurar la fuente del reloj (AHB).
-    SYSTICK_CSR = SYST_CSR_ENABLE | SYST_CSR_CLKSOURCE;
+	/*Input push pull*/
+    GPIOA_CRL  = 0x44444444;            // Make low GPIOC input
+	GPIOA_CRH  = 0x44444444;            // Make high GPIOC input
+	GPIOA_ODR &= ~(1<<BUTTON_PIN); 		// Pull-down
+    GPIOA_ODR &= ~(1u << BUTTON_PIN); /* pull-down */
+
+    // Mapear EXTI0 a PA0
+    AFIO_EXTICR1 &= ~(0xF << 0); // 0b0000 = Puerto A
+
+    // Configurar EXTI0: habilitar línea y flanco ascendente
+    EXTI_IMR  |= (1<<BUTTON_PIN); // Unmask line 0
+    EXTI_RTSR |= (1<<BUTTON_PIN); // Rising edge trigger
+
+    // Habilitar IRQ6 (EXTI0) en NVIC
+    NVIC_ISER0 |= (1<<6);
+
+	// Habilitar interrupciones globales
+    __asm__ volatile ("cpsie i");
 
 
 	for(;;)
-	{
-         // Polling: Revisar estado del contador. Espera hasta que el SysTick termine de contar.
-        // El bit 16 de SYSTICK_CSR (COUNTFLAG) se pone en 1 cuando el contador llega a 0.
-        if (SYSTICK_CSR & SYST_CSR_COUNTFLAG)
-        {
-            // Invierte el estado del pin PB13 para que el LED parpadee.
-            GPIOB_ODR ^= (1u << LED_PIN);
-
-        }
-
+	{                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
+		__asm__ volatile ("wfi"); 
 	}
 
 	return 0;
@@ -67,8 +74,21 @@ int main(void)
 #define SRAM_BASE ((uint32_t) 0x20000000)
 #define STACKINIT ((interrupt_t)(SRAM_BASE+SRAM_SIZE))
 
+void EXTI0_IRQHandler(void)
+{
+    if (EXTI_PR & (1<<BUTTON_PIN)) {          // Verificar si hay interrupción pendiente en línea 0
+        GPIOB_ODR ^= (1<<LED_PIN);           // Toggle LED
+        EXTI_PR |= (1<<BUTTON_PIN);          // Limpiar flag escribiendo 1
+    }
+}
+
 typedef void(*interrupt_t)(void);
 const interrupt_t vector_table[256] __attribute__ ((section(".vtab"))) = {
-	STACKINIT,												// 0x0000_0000 Stack Pointer
-	(interrupt_t) main,										// 0x0000_0004 Reset
+    STACKINIT,             // 0x0000_0000 Stack Pointer
+    (interrupt_t) main,    // 0x0000_0004 Reset
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    /* IRQs */
+    0,0,0,0,0,0,
+    EXTI0_IRQHandler,      // IRQ6 -> EXTI0
+    /* resto a 0 */
 };
