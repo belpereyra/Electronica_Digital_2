@@ -7,9 +7,9 @@ typedef unsigned char  uint8_t;
 
 // Registros de control del reloj (RCC)
 // El registro APB2ENR está en la dirección base del RCC más un offset de 0x18
-#define APB2ENR *(volatile int*)0x40021018
+#define APB2ENR *(volatile int*)0x40021018 // Habilita el clk de los perifericos
 
-// NIVC: Controlador de interrupciones
+// NIVC: Controlador de interrupciones. Permite controlar interrupciones especificas.
 #define NVIC_ISER0   (*(volatile uint32_t*)0xE000E100)  // NVIC Interrupt Set Enable Register
 #define AFIO_EXTICR1 (*(volatile uint32_t*)0x40010008)  // AFIO EXTI configuration register 1
 #define EXTI_IMR     (*(volatile uint32_t*)0x40010400)  // EXTI Interrupt Mask Register
@@ -37,34 +37,28 @@ int main(void)
 	/* Habilitar relojes: IOPA (bit2), IOPB (bit3), AFIO (bit0) */
     APB2ENR |= (1<<2) | (1<<3) | (1<<0);
 
-	/* Output Pull down*/
+	/* Output push pull a 50 MHz*/
 	GPIOB_CRL  = 0x33333333;            // Make low GPIOB output
 	GPIOB_CRH  = 0x33333333;            // Make high GPIOB output		
 	GPIOB_ODR &= ~(1u << LED_PIN);		// Arranca apagado
 
-	/*Input push pull*/
-    GPIOA_CRL  = 0x44444444;            // Make low GPIOC input
-	GPIOA_CRH  = 0x44444444;            // Make high GPIOC input
+	/*Input pull-up/pull-down*/
+    GPIOA_CRL  = 0x88888888;            // Make low GPIOC input
+	GPIOA_CRH  = 0x88888888;            // Make high GPIOC input
 	GPIOA_ODR &= ~(1<<BUTTON_PIN); 		// Pull-down
-    GPIOA_ODR &= ~(1u << BUTTON_PIN); /* pull-down */
 
-    // Mapear EXTI0 a PA0
+    // Mapear EXTI0 a PA0: EXTI0 (reg de conf de salida 0) se conecta a PA0
     AFIO_EXTICR1 &= ~(0xF << 0); // 0b0000 = Puerto A
 
-    // Configurar EXTI0: habilitar línea y flanco ascendente
-    EXTI_IMR  |= (1<<BUTTON_PIN); // Unmask line 0
-    EXTI_RTSR |= (1<<BUTTON_PIN); // Rising edge trigger
+    // Configurar EXTI0 (interrupcion): habilitar línea y flanco ascendente
+    EXTI_IMR  |= (1<<BUTTON_PIN); // habilita line 0
+    EXTI_RTSR |= (1<<BUTTON_PIN); // flanco ascendente, la interr se activa con el boton pulsado
 
     // Habilitar IRQ6 (EXTI0) en NVIC
-    NVIC_ISER0 |= (1<<6);
-
-	// Habilitar interrupciones globales
-    __asm__ volatile ("cpsie i");
-
+    NVIC_ISER0 |= (1<<6); // habilita IRQ6 → EXTI0
 
 	for(;;)
 	{                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
-		__asm__ volatile ("wfi"); 
 	}
 
 	return 0;
@@ -88,7 +82,7 @@ const interrupt_t vector_table[256] __attribute__ ((section(".vtab"))) = {
     (interrupt_t) main,    // 0x0000_0004 Reset
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
     /* IRQs */
-    0,0,0,0,0,0,
-    EXTI0_IRQHandler,      // IRQ6 -> EXTI0
+    0,0,0,0,0,EXTI0_IRQHandler,
+    0,      // IRQ6 -> EXTI0
     /* resto a 0 */
 };
