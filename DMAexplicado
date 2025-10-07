@@ -385,7 +385,17 @@ int main(void)
     // PRESCALER
         // registro divide la frecuencia del reloj principal para hacer que el temporizador cuente más lento.
 	DEVMAP->TIMs[TIM2].REGs.PSC   = (72e6/8)/(sizeof(data)/sizeof(data[0]))-1;	// fCK_PSC / (PSC[15:0] + 1)
-	DEVMAP->TIMs[TIM2].REGs.ARR   = 8-1;
+                                                    // data se definio con 256 elementos, c/u es un entero que ocupa 4 bytes
+                                                    // entonces 256x4 = 1024 bytes
+                                                    // sizeof(data[0]) da el tamaño de un solo int = 4 bytes
+                                                    // (Tamaño total del arreglo) / (Tamaño de un elemento) = Número de elementos
+                                                    // = 256 en este caso
+                                                    // CALCULA EL NUMERO DE ELEMENTOS
+                                // psa = 35155
+    // Frecuencia Intermedia = 72,000,000 / 35,156 ≈ 2,048 Hz
+	DEVMAP->TIMs[TIM2].REGs.ARR   = 8-1; // -> segundo divisor de frecuencia para bajar velocidad
+    // Frecuencia Final = 2,048 Hz / 8 = 256 Hz
+
 	DEVMAP->TIMs[TIM2].REGs.DIER |= (1 << 14);				// Trigger DMA request enable
 	DEVMAP->TIMs[TIM2].REGs.DIER |= (1 <<  8);	// Sollicitud del dma cuando llega al final
 //	DEVMAP->TIMs[TIM2].REGs.DIER |= (1 <<  6);				// Enable interrupt
