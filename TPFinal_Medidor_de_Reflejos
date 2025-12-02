@@ -54,7 +54,7 @@ int main(void)
 	GPIOA_CRH  = 0x88888888;            // Make high GPIOC input -> no lo uso
 	GPIOA_ODR |= (1 << 0);              // Activar Pull-Up en PA0 
 
-	// Configuración del Systick
+	// 3. Configuración del Systick
 	// Genera una interrupción cada 1ms
 	SYSTICK_RVR = 7999;  // (8000 - 1)
     SYSTICK_CVR = 0;     // Reiniciar contador
@@ -80,7 +80,7 @@ int main(void)
 				Se divide por 6000 y se toma el resto, el cual será entre 0 y 5999. Para evitar que el valor de espera sea 0,
 				se suman 4000 ms (4 segundos).*/
 		
-		// C. Esperar 
+		// 3. Esperar 
         tiempo_inicio = ms_count; 
         while((ms_count - tiempo_inicio) < espera_random); 
 
