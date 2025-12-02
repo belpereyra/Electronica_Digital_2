@@ -46,12 +46,12 @@ int main(void)
 	// a) GPIOB como salida push-pull
 	GPIOB_CRL  = 0x33333333;            // Make low GPIOB output (PB0, PB1, PB5)
 	GPIOB_CRH  = 0x33333333;            // Make high GPIOB output -> no lo uso
-	GPIOB_ODR &= ~(0xFFFF); 			// Asegurar que todo arranca apagado	
+	GPIOB_ODR &= ~((1<<0) | (1<<1) | (1<<10)); // Asegurar que todo arranca apagado	
 	
 	// b) GPIOA como entrada pull-up
 	// 0x8 en binario -> 1000 (Mode=00 Input, CNF=10 Pull-up/down)
-	GPIOA_CRL  = 0x88888888;            // Make low GPIOC input 
-	GPIOA_CRH  = 0x88888888;            // Make high GPIOC input -> no lo uso
+	GPIOA_CRL  = 0x88888888;            // Make low GPIOA input 
+	GPIOA_CRH  = 0x88888888;            // Make high GPIOA input -> no lo uso
 	GPIOA_ODR |= (1 << 0);              // Activar Pull-Up en PA0 
 
 	// 3. Configuración del Systick
@@ -61,7 +61,7 @@ int main(void)
 	SYSTICK_CSR = 0x07; // 1 | 2 | 4 = 7 -> 0x07
 							// Bit 0: ENABLE (1)
 							// Bit 1: TICKINT (1) -> Habilita la interrupción
-							// Bit 2: CLKSOURCE (1) -> Reloj del procesador
+							// Bit 2: CLKSOURCE (1) -> Reloj del procesador: 72MHz
 
 	uint32_t tiempo_inicio;
 	uint32_t tiempo_reaccion;
@@ -70,8 +70,7 @@ int main(void)
 	while(1)
 	{
 		// 1. Apagar LEDs
-		// FFFF en hexa equivale a 1111111111111111 en binario
-		GPIOB_ODR &= ~(0xFFFF); // Apagar todo puerto B
+		GPIOB_ODR &= ~((1<<0) | (1<<1) | (1<<10)); // Apagar puerto B en uso
 
 		// 2. Espera aleatoria
 		espera_random = (ms_count % 2000) + 1000; // Entre 4 y casi 10 segundos
@@ -102,7 +101,7 @@ int main(void)
         }
         else 
         {
-            GPIOB_ODR |= (1 << 5); // AMARILLO (PB5) - Lento
+            GPIOB_ODR |= (1 << 10); // AMARILLO (PB5) - Lento
         }
 
 		// 6. Visualización de los resultados
@@ -118,10 +117,14 @@ int main(void)
 
 // Tabla de vectores de interrupción: Primer bloque de memoria que lee el procesador al iniciar, esta al comienzo del Flash.
 // Vector tables es un arreglo de punteros a funciones.
+#define SRAM_SIZE ((uint32_t) 0x00005000)
+#define SRAM_BASE ((uint32_t) 0x20000000)
+#define STACKINIT ((interrupt_t)(SRAM_BASE+SRAM_SIZE))
+
 typedef void(*interrupt_t)(void);
 const interrupt_t vector_table[256] __attribute__ ((section(".vtab"))) = {
-	STACKINIT,												// Pos0. 0x0000_0000 Stack Pointer -> Valor inicial de donde arranca a leer el micro(pos 0 de la Flash)
-	(interrupt_t) main,										// Pos1. 0x0000_0004 Reset
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,    				// Posiciones 2 a 14 sin usar              
-    [15] = SysTick_Handler,									// Posición 15: SysTick Handler
+    STACKINIT,              // 0: Stack Pointer
+    (interrupt_t)main,      // 1: Reset
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // Relleno
+    [15] = SysTick_Handler  // 15: SysTick
 };
