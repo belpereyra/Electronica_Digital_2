@@ -63,9 +63,45 @@ int main(void)
 							// Bit 1: TICKINT (1) -> Habilita la interrupción
 							// Bit 2: CLKSOURCE (1) -> Reloj del procesador: 72MHz
 
-	uint32_t tiempo_inicio;
-	uint32_t tiempo_reaccion;
-	uint32_t espera_random;
+	uint32_t tiempo_inicio; // Almacena el tiempo en que se encendio el LED
+	uint32_t tiempo_reaccion; // diferencia entre el tiempo que estuve encendido el LED y lo que tardo el usuario en alertarlo
+	uint32_t espera_random; // Almacena un tiempo de espera aleatorio
+	uint32_t ultimo_cambio = 0; // Para recordar cuándo cambiaron las luces
+    uint8_t estado_leds = 0;    // 0 = Apagados, 1 = Encendidos
+	uint8_t paso_secuencia = 0; // 0=Rojo, 1=Verde, 2=Amarillo
+
+	// Parpadeo de luces hasta que el usuario inicie con el test (pulse el botón)
+	while((GPIOA_IDR & (1 << 0)) != 0)
+    {
+        // Verificar si pasaron 200ms
+        if ((ms_count - ultimo_cambio) > 300) // Aca vario la velocidad de parpadeo
+        {
+            ultimo_cambio = ms_count; // Actualizar reloj
+
+            GPIOB_ODR &= ~((1 << 0) | (1 << 1) | (1 << 10)); // Se apagan todos los LEDs
+
+            // Se prende el LED que toca segun el paso
+            if (paso_secuencia == 0) {
+                GPIOB_ODR |= (1 << 0); // Prende Rojo
+            }
+            else if (paso_secuencia == 1) {
+                GPIOB_ODR |= (1 << 1); // Prende Verde
+            }
+            else if (paso_secuencia == 2) {
+                GPIOB_ODR |= (1 << 10); 
+            }
+
+            paso_secuencia++; // Avanza por cada LED
+            
+            // Retorna al 0 cuando paso_secuencia++ > 2
+            if (paso_secuencia > 2) {
+                paso_secuencia = 0;
+            }
+        }
+    }
+
+	// Aseguramos que todo quede apagado antes de empezar
+    GPIOB_ODR &= ~((1 << 0) | (1 << 1) | (1 << 10));
 
 	while(1)
 	{
@@ -73,11 +109,11 @@ int main(void)
 		GPIOB_ODR &= ~((1<<0) | (1<<1) | (1<<10)); // Apagar puerto B en uso
 
 		// 2. Espera aleatoria
-		espera_random = (ms_count % 2000) + 1000; // Entre 4 y casi 10 segundos
+		espera_random = (ms_count % 4000) + 1000; // Entre 4 y casi 10 segundos
 			/* ms_count es una variable contador que aumenta cada 1ms debido al Systick. La variable tendra un valor diferente en cada
 				pulsada debido al error humano de no tocar el boton siempre con el mismo retardo.
-				Se divide por 6000 y se toma el resto, el cual será entre 0 y 5999. Para evitar que el valor de espera sea 0,
-				se suman 4000 ms (4 segundos).*/
+				Se divide por 4000 y se toma el resto, el cual será entre 0 y 4999. Para evitar que el valor de espera sea 0,
+				se suman 1000 ms (4 segundos).*/
 		
 		// 3. Esperar 
         tiempo_inicio = ms_count; 
